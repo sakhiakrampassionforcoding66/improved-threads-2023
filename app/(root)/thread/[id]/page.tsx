@@ -1,73 +1,66 @@
-import ThreadCard from "@/components/cards/ThreadCard";
-import Comment from "@/components/forms/Comment";
-import { fetchThreadById } from "@/lib/actions/thread.actions";
-import { fetchUser } from "@/lib/actions/user.actions";
-import { currentUser } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
+import { currentUser } from "@clerk/nextjs";
 
-export default async function Page({ params }: { params: { id: string } }) {
-  const threadId = params.id;
+import Comment from "@/components/forms/Comment";
+import ThreadCard from "@/components/cards/ThreadCard";
+
+import { fetchUser } from "@/lib/actions/user.actions";
+import { fetchThreadById } from "@/lib/actions/thread.actions";
+
+export const revalidate = 0;
+
+async function page({ params }: { params: { id: string } }) {
+  if (!params.id) return null;
+
   const user = await currentUser();
-
-  // return if there is no valid thread id
-  if (!threadId) {
-    return null;
-  }
-
-  // check if the user is logged in
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   const userInfo = await fetchUser(user.id);
+  if (!userInfo?.onboarded) redirect("/onboarding");
 
-  // redirect user to onboarding page if the user is not onboarded
-  if (!userInfo?.onboarded) {
-    redirect("/onboarding");
-  }
+  const thread = await fetchThreadById(params.id);
 
-  // fetch the thread
-  const thread = await fetchThreadById(threadId);
   return (
-    <section className="relative">
+    <section className='relative'>
       <div>
         <ThreadCard
-          key={thread._id}
           id={thread._id}
-          currentUserId={user?.id || ""}
-          content={thread.text}
+          currentUserId={user.id}
           parentId={thread.parentId}
-          comments={thread.children}
-          createdAt={thread.createdAt}
-          community={thread.community}
+          content={thread.text}
           author={thread.author}
+          community={thread.community}
+          createdAt={thread.createdAt}
+          comments={thread.children}
         />
       </div>
 
-      <div className="mt-7">
+      <div className='mt-7'>
         <Comment
-          threadId={threadId}
-          currentUserImg={userInfo.image}
+          threadId={params.id}
+          currentUserImg={user.imageUrl}
           currentUserId={JSON.stringify(userInfo._id)}
         />
       </div>
 
-      <div className="mt-10">
-        {thread.children.map((comment: any) => (
+      <div className='mt-10'>
+        {thread.children.map((childItem: any) => (
           <ThreadCard
-            key={comment._id}
-            id={comment._id}
-            currentUserId={comment?.id}
-            content={comment.text}
-            parentId={comment.parentId}
-            comments={comment.children}
-            createdAt={comment.createdAt}
-            community={comment.community}
-            author={comment.author}
-            isComment={true}
+            key={childItem._id}
+            id={childItem._id}
+            currentUserId={user.id}
+            parentId={childItem.parentId}
+            content={childItem.text}
+            author={childItem.author}
+            community={childItem.community}
+            createdAt={childItem.createdAt}
+            comments={childItem.children}
+            isComment
           />
         ))}
       </div>
     </section>
   );
 }
+
+export default page;

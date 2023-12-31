@@ -1,50 +1,65 @@
-import CommunityCard from "@/components/cards/CommunityCard";
-import SearchBar from "@/components/forms/SearchBar";
-import { fetchCommunities } from "@/lib/actions/community.actions";
 import { currentUser } from "@clerk/nextjs";
+import { redirect } from "next/navigation";
 
-export default async function CommunitiesPage({ searchParams }: { searchParams: { q: string } }) {
-  const q = searchParams?.q || "";
+import Searchbar from "@/components/shared/Searchbar";
+import Pagination from "@/components/shared/Pagination";
+import CommunityCard from "@/components/cards/CommunityCard";
 
+import { fetchUser } from "@/lib/actions/user.actions";
+import { fetchCommunities } from "@/lib/actions/community.actions";
+
+async function Page({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | undefined };
+}) {
   const user = await currentUser();
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
+
+  const userInfo = await fetchUser(user.id);
+  if (!userInfo?.onboarded) redirect("/onboarding");
 
   const result = await fetchCommunities({
-    searchString: q,
-    pageNumber: 1,
+    searchString: searchParams.q,
+    pageNumber: searchParams?.page ? +searchParams.page : 1,
     pageSize: 25,
   });
 
-
   return (
-    <section>
-      {/** render a search bar */}
-      <h1 className="head-text mb-10">Communities</h1>
-      <SearchBar
-        placeholder="Search for a community..."
+    <>
+      <h1 className='head-text'>Communities</h1>
+
+      <div className='mt-5'>
+        <Searchbar routeType='communities' />
+      </div>
+
+      <section className='mt-9 flex flex-wrap gap-4'>
+        {result.communities.length === 0 ? (
+          <p className='no-result'>No Result</p>
+        ) : (
+          <>
+            {result.communities.map((community) => (
+              <CommunityCard
+                key={community.id}
+                id={community.id}
+                name={community.name}
+                username={community.username}
+                imgUrl={community.image}
+                bio={community.bio}
+                members={community.members}
+              />
+            ))}
+          </>
+        )}
+      </section>
+
+      <Pagination
+        path='communities'
+        pageNumber={searchParams?.page ? +searchParams.page : 1}
+        isNext={result.isNext}
       />
-      
-      {/** render a list of communities */}
-    {result?.communities?.length === 0 ? (
-      <p className="text-center text-gray-1 text-base-medium mt-10">
-        No communities found
-      </p>) : (
-        
-      <div className="grid grid-cols-1 gap-4 mt-10">
-        {result.communities.map((community) => (
-          <CommunityCard
-            key={community.id}
-            id={community.id}
-            name={community.name}
-            username={community.username}
-            bio={community.bio}
-            imgUrl={community.image}
-            members={community.members}
-          />
-        ))}
-      </div>)}
-    </section>
-  )
+    </>
+  );
 }
+
+export default Page;

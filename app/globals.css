@@ -43,7 +43,7 @@
   }
 
   .user-card_avatar {
-    @apply flex items-start justify-start gap-3 xs:items-center;
+    @apply flex flex-1 items-start justify-start gap-3 xs:items-center;
   }
 
   .user-card_btn {
